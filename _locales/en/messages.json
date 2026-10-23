@@ -1,0 +1,140 @@
+{
+  "nombre": {
+    "message": "My Autoclicker"
+  },
+  "descripcion": {
+    "message": "Auto-click at the speed you choose: left, right or middle click, with a hotkey and per-site control."
+  },
+  "tituloBoton": {
+    "message": "Open My Autoclicker"
+  },
+  "descripcionComando": {
+    "message": "Open the My Autoclicker panel"
+  },
+
+  "estadoActivo": {
+    "message": "Active"
+  },
+  "estadoInactivo": {
+    "message": "Inactive"
+  },
+  "etiquetaSitio": {
+    "message": "Current site"
+  },
+  "activarSitio": {
+    "message": "Enable on this site"
+  },
+  "desactivarSitio": {
+    "message": "Disable"
+  },
+  "sinPestana": {
+    "message": "Could not read the current tab."
+  },
+  "noCompatible": {
+    "message": "This page cannot use the autoclicker: web sites only (http/https)."
+  },
+  "sitioSinPermiso": {
+    "message": "This site has no permission yet. Press “Enable” and accept Firefox's request."
+  },
+  "permisoDenegado": {
+    "message": "Permission denied: the site was not enabled."
+  },
+  "errorGenerico": {
+    "message": "Something went wrong. Please try again."
+  },
+  "noInyectado": {
+    "message": "Could not inject into this tab. Reload the page and try again."
+  },
+
+  "etiquetaCps": {
+    "message": "Clicks per second"
+  },
+  "etiquetaTipoClic": {
+    "message": "Click type"
+  },
+  "clicIzquierdo": {
+    "message": "Left"
+  },
+  "clicDerecho": {
+    "message": "Right"
+  },
+  "clicCentral": {
+    "message": "Middle"
+  },
+  "etiquetaModo": {
+    "message": "Mode"
+  },
+  "modoContinuo": {
+    "message": "Continuous"
+  },
+  "modoMantener": {
+    "message": "Hold key"
+  },
+  "etiquetaTecla": {
+    "message": "Hotkey"
+  },
+  "capturarTecla": {
+    "message": "Press a key…"
+  },
+  "restablecerTecla": {
+    "message": "Reset"
+  },
+  "mostrarIndicador": {
+    "message": "Show on-page indicator"
+  },
+  "ayudaContinuo": {
+    "message": "The hotkey pauses or resumes the autoclicker."
+  },
+  "ayudaMantener": {
+    "message": "Hold the key down to click; releasing it stops."
+  },
+  "clicsSesion": {
+    "message": "Clicks"
+  },
+  "abrirOpciones": {
+    "message": "All options"
+  },
+  "sinSitioActivo": {
+    "message": "No active site"
+  },
+
+  "tituloOpciones": {
+    "message": "My Autoclicker options"
+  },
+  "encabezadoAjustes": {
+    "message": "General settings"
+  },
+  "encabezadoSitios": {
+    "message": "Enabled sites"
+  },
+  "sinSitios": {
+    "message": "You have not enabled any site yet. Click the toolbar icon while visiting a website and press “Enable on this site”."
+  },
+  "quitarSitio": {
+    "message": "Remove"
+  },
+  "desactivarTodo": {
+    "message": "Disable all"
+  },
+  "guardado": {
+    "message": "Changes saved"
+  },
+  "restablecerAjustes": {
+    "message": "Reset settings"
+  },
+  "encabezadoPrivacidad": {
+    "message": "Permissions and privacy"
+  },
+  "textoPrivacidad": {
+    "message": "This extension does not collect or send any data. It only asks for access to the sites you enable, one at a time, and keeps that permission while the site is enabled: disabling it revokes the permission. Settings and the site list stay in your browser."
+  },
+  "textoUso": {
+    "message": "Usage: enable the site from the toolbar icon, pick your speed and click type, then use the hotkey (F8 by default) to pause, resume or hold, depending on the mode you chose."
+  },
+  "indicadorAccesible": {
+    "message": "Autoclicker running"
+  },
+  "version": {
+    "message": "Version"
+  }
+}

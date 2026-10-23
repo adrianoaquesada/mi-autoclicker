@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Página de prueba — Mi Autoclicker</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 0; text-align: center; padding-top: 40px; }
+  #b { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+       font-size: 24px; padding: 18px 30px; cursor: pointer; }
+  #ayuda { position: fixed; left: 12px; bottom: 12px; width: 380px; text-align: left;
+           font: 13px/1.45 system-ui, sans-serif; background: rgba(22,24,28,.94); color: #eaeaea;
+           border: 1px solid rgba(255,255,255,.16); border-radius: 10px; padding: 10px 14px;
+           box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+  #ayuda ol { margin: 6px 0 6px 18px; padding: 0; }
+  #ayuda li { margin: 3px 0; }
+  #ayuda code { background: rgba(255,255,255,.12); padding: 1px 4px; border-radius: 4px; }
+  #estado { margin-top: 6px; padding: 6px 8px; border-radius: 6px;
+            background: rgba(255,196,0,.16); color: #ffd479; font-weight: 600; }
+  #estado.ok { background: rgba(55,214,122,.16); color: #7df0ac; }
+</style>
+</head>
+<body>
+  <h1 id="n">Clics: 0</h1>
+  <button id="b">Botón de prueba</button>
+
+  <div id="ayuda">
+    <strong>Mi Autoclicker — cómo probar</strong>
+    <ol>
+      <li>La dirección debe ser <code>http://127.0.0.1:8765/pagina-prueba.html</code>
+          (si empieza por <code>file://</code> <b>no sirve</b>: vuelve al servidor).</li>
+      <li>Pulsa el icono de la extensión (al pasar el ratón sale
+          <em>«Abrir Mi Autoclicker»</em>; si no lo ves, está en el icono de
+          piezas 🧩 del navegador).</li>
+      <li>En el panel pulsa <b>«Activar en este sitio»</b> → acepta el permiso
+          que pide Firefox.</li>
+      <li>Debe aparecer: badge <b>ON</b>, indicador arriba a la derecha y el
+          contador subiendo. <b>F8</b> pausa y reanuda.</li>
+    </ol>
+    <div id="estado">Esperando: aún no ha habido ningún clic.</div>
+  </div>
+
+  <script>
+    window.__clics = 0;      // cualquier click en la página
+    window.__boton = 0;      // clicks que llegan al botón
+    window.__ultimo = null;
+    window.__raton = null;
+    window.__errores = [];
+
+    const h = document.getElementById("n");
+    const boton = document.getElementById("b");
+    const estado = document.getElementById("estado");
+
+    // Captura en fase de captura: cuenta también los del motor del autoclicker.
+    document.addEventListener("click", (e) => {
+      window.__clics += 1;
+      window.__ultimo = { x: e.clientX, y: e.clientY, trusted: e.isTrusted,
+                          objetivo: e.target && e.target.id };
+      h.textContent = "Clics: " + window.__clics;
+    }, true);
+
+    boton.addEventListener("click", () => { window.__boton += 1; });
+
+    document.addEventListener("mousemove", (e) => {
+      window.__raton = { x: Math.round(e.clientX), y: Math.round(e.clientY) };
+    }, true);
+
+    window.addEventListener("error", (e) => window.__errores.push(String(e.message)));
+
+    setInterval(() => {
+      if (window.__clics > 0) {
+        estado.classList.add("ok");
+        estado.textContent = "✓ Funciona: " + window.__clics + " clics y subiendo.";
+      }
+    }, 500);
+  </script>
+</body>
+</html>

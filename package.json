@@ -1,0 +1,28 @@
+{
+  "name": "mi-autoclicker",
+  "version": "1.0.0",
+  "description": "Extensión de Firefox (Manifest V3) que hace clics automáticos a la velocidad que elijas.",
+  "private": true,
+  "license": "MPL-2.0",
+  "keywords": [
+    "firefox",
+    "extension",
+    "autoclicker",
+    "webextensions",
+    "manifest-v3"
+  ],
+  "scripts": {
+    "iconos": "python3 tools/generar_iconos.py",
+    "lint": "web-ext lint -c web-ext-config.cjs",
+    "test": "node tests/motor.test.js && node tests/fondo.test.js && node tests/popup.test.js",
+    "test:e2e": "node tests/e2e/prueba.js",
+    "build": "web-ext build --overwrite-dest --artifacts-dir dist -c web-ext-config.cjs",
+    "run": "web-ext run -c web-ext-config.cjs",
+    "sign": "web-ext sign --channel listed --artifacts-dir dist -c web-ext-config.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "^30.1.3",
+    "selenium-webdriver": "^4.51.0",
+    "web-ext": "^10.8.0"
+  }
+}

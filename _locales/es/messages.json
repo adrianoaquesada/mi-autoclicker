@@ -1,0 +1,140 @@
+{
+  "nombre": {
+    "message": "Mi Autoclicker"
+  },
+  "descripcion": {
+    "message": "Haz clics automáticos a la velocidad que elijas: clic izquierdo, derecho o central, con tecla rápida y control por sitio."
+  },
+  "tituloBoton": {
+    "message": "Abrir Mi Autoclicker"
+  },
+  "descripcionComando": {
+    "message": "Abrir el panel de Mi Autoclicker"
+  },
+
+  "estadoActivo": {
+    "message": "Activo"
+  },
+  "estadoInactivo": {
+    "message": "Inactivo"
+  },
+  "etiquetaSitio": {
+    "message": "Sitio actual"
+  },
+  "activarSitio": {
+    "message": "Activar en este sitio"
+  },
+  "desactivarSitio": {
+    "message": "Desactivar"
+  },
+  "sinPestana": {
+    "message": "No se pudo leer la pestaña actual."
+  },
+  "noCompatible": {
+    "message": "Esta página no admite el autoclicker: solo sitios web (http/https)."
+  },
+  "sitioSinPermiso": {
+    "message": "Este sitio aún no tiene permiso. Pulsa «Activar» y acepta la petición de Firefox."
+  },
+  "permisoDenegado": {
+    "message": "Permiso denegado: el sitio no se ha activado."
+  },
+  "errorGenerico": {
+    "message": "Algo ha salido mal. Vuelve a intentarlo."
+  },
+  "noInyectado": {
+    "message": "No se pudo inyectar en esta pestaña. Recarga la página y vuelve a probar."
+  },
+
+  "etiquetaCps": {
+    "message": "Clics por segundo"
+  },
+  "etiquetaTipoClic": {
+    "message": "Tipo de clic"
+  },
+  "clicIzquierdo": {
+    "message": "Izquierdo"
+  },
+  "clicDerecho": {
+    "message": "Derecho"
+  },
+  "clicCentral": {
+    "message": "Central"
+  },
+  "etiquetaModo": {
+    "message": "Modo"
+  },
+  "modoContinuo": {
+    "message": "Continuo"
+  },
+  "modoMantener": {
+    "message": "Mantener tecla"
+  },
+  "etiquetaTecla": {
+    "message": "Tecla rápida"
+  },
+  "capturarTecla": {
+    "message": "Pulsa una tecla…"
+  },
+  "restablecerTecla": {
+    "message": "Restablecer"
+  },
+  "mostrarIndicador": {
+    "message": "Mostrar indicador en la página"
+  },
+  "ayudaContinuo": {
+    "message": "Con la tecla pausas o reanudas el autoclicker."
+  },
+  "ayudaMantener": {
+    "message": "Mantén pulsada la tecla para hacer clic; al soltarla se detiene."
+  },
+  "clicsSesion": {
+    "message": "Clics"
+  },
+  "abrirOpciones": {
+    "message": "Todas las opciones"
+  },
+  "sinSitioActivo": {
+    "message": "Sin sitio activo"
+  },
+
+  "tituloOpciones": {
+    "message": "Opciones de Mi Autoclicker"
+  },
+  "encabezadoAjustes": {
+    "message": "Ajustes generales"
+  },
+  "encabezadoSitios": {
+    "message": "Sitios activos"
+  },
+  "sinSitios": {
+    "message": "Todavía no has activado ningún sitio. Haz clic en el icono de la barra mientras visitas una web y pulsa «Activar en este sitio»."
+  },
+  "quitarSitio": {
+    "message": "Quitar"
+  },
+  "desactivarTodo": {
+    "message": "Desactivar todos"
+  },
+  "guardado": {
+    "message": "Cambios guardados"
+  },
+  "restablecerAjustes": {
+    "message": "Restablecer ajustes"
+  },
+  "encabezadoPrivacidad": {
+    "message": "Permisos y privacidad"
+  },
+  "textoPrivacidad": {
+    "message": "Esta extensión no recopila ni envía datos. Solo pide acceso a los sitios que activas, uno a la vez, y se queda con ese permiso mientras el sitio esté activo: al desactivarlo se revoca. El almacenamiento (ajustes y lista de sitios) se queda en tu navegador."
+  },
+  "textoUso": {
+    "message": "Uso: activa el sitio desde el icono de la barra, elige velocidad y tipo de clic, y usa la tecla rápida (F8 por defecto) para pausar, reanudar o mantener pulsada según el modo elegido."
+  },
+  "indicadorAccesible": {
+    "message": "Autoclicker activo"
+  },
+  "version": {
+    "message": "Versión"
+  }
+}

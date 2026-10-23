@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.xpi
+*.log
+.web-ext-artifacts/
+tests/e2e/variante/
+.DS_Store

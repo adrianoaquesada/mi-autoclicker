@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mi Autoclicker — Opciones</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="hoja">
+      <header class="cabecera">
+        <img src="../icons/icono-96.png" alt="" width="48" height="48" />
+        <div>
+          <h1 data-i18n="nombre">Mi Autoclicker</h1>
+          <p class="subtitulo" data-i18n="tituloOpciones">Opciones de Mi Autoclicker</p>
+        </div>
+        <span class="version"><span data-i18n="version">Versión</span> <b id="version">—</b></span>
+      </header>
+
+      <p class="uso" data-i18n="textoUso">
+        Uso: activa el sitio desde el icono de la barra, elige velocidad y tipo de clic, y usa la
+        tecla rápida (F8 por defecto) para pausar, reanudar o mantener pulsada según el modo
+        elegido.
+      </p>
+
+      <section class="tarjeta">
+        <h2 data-i18n="encabezadoAjustes">Ajustes generales</h2>
+
+        <div class="campo">
+          <div class="campo-cabecera">
+            <label for="cps" data-i18n="etiquetaCps">Clics por segundo</label>
+            <output id="cps-valor" for="cps">10</output>
+          </div>
+          <input type="range" id="cps" min="1" max="100" step="1" value="10" />
+        </div>
+
+        <fieldset class="campo">
+          <legend data-i18n="etiquetaTipoClic">Tipo de clic</legend>
+          <div class="segmentado">
+            <label>
+              <input type="radio" name="tipo" value="izquierdo" checked />
+              <span data-i18n="clicIzquierdo">Izquierdo</span>
+            </label>
+            <label>
+              <input type="radio" name="tipo" value="derecho" />
+              <span data-i18n="clicDerecho">Derecho</span>
+            </label>
+            <label>
+              <input type="radio" name="tipo" value="central" />
+              <span data-i18n="clicCentral">Central</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="campo">
+          <legend data-i18n="etiquetaModo">Modo</legend>
+          <div class="segmentado">
+            <label>
+              <input type="radio" name="modo" value="continuo" checked />
+              <span data-i18n="modoContinuo">Continuo</span>
+            </label>
+            <label>
+              <input type="radio" name="modo" value="mantener" />
+              <span data-i18n="modoMantener">Mantener tecla</span>
+            </label>
+          </div>
+          <p class="ayuda" id="ayuda-modo" data-i18n="ayudaContinuo">
+            Con la tecla pausas o reanudas el autoclicker.
+          </p>
+        </fieldset>
+
+        <div class="campo">
+          <label for="tecla" data-i18n="etiquetaTecla">Tecla rápida</label>
+          <div class="tecla-fila">
+            <input
+              type="text"
+              id="tecla"
+              readonly
+              value="F8"
+              data-i18n-placeholder="capturarTecla"
+              placeholder="Pulsa una tecla…"
+            />
+            <button type="button" id="restablecer-tecla" class="boton-secundario" data-i18n="restablecerTecla">
+              Restablecer
+            </button>
+          </div>
+        </div>
+
+        <label class="casilla">
+          <input type="checkbox" id="indicador" checked />
+          <span data-i18n="mostrarIndicador">Mostrar indicador en la página</span>
+        </label>
+
+        <div class="acciones">
+          <button type="button" id="restablecer-ajustes" class="boton-secundario" data-i18n="restablecerAjustes">
+            Restablecer ajustes
+          </button>
+          <span class="guardado" id="guardado" hidden data-i18n="guardado">Cambios guardados</span>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2 data-i18n="encabezadoSitios">Sitios activos</h2>
+        <p class="ayuda" id="sin-sitios" data-i18n="sinSitios">
+          Todavía no has activado ningún sitio.
+        </p>
+        <ul class="lista-sitios" id="lista-sitios"></ul>
+        <div class="acciones" id="acciones-sitios" hidden>
+          <button type="button" id="desactivar-todo" class="boton-secundario peligro" data-i18n="desactivarTodo">
+            Desactivar todos
+          </button>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2 data-i18n="encabezadoPrivacidad">Permisos y privacidad</h2>
+        <p class="texto" data-i18n="textoPrivacidad">
+          Esta extensión no recopila ni envía datos.
+        </p>
+      </section>
+    </main>
+
+    <script src="options.js"></script>
+  </body>
+</html>

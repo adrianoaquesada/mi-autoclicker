@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_nombre__",
+  "description": "__MSG_descripcion__",
+  "developer": {
+    "name": "adrianoaquesada",
+    "url": "https://github.com/adrianoaquesada"
+  },
+  "homepage_url": "https://github.com/adrianoaquesada/mi-autoclicker",
+  "version": "1.0.0",
+  "default_locale": "es",
+  "icons": {
+    "16": "icons/icono-16.png",
+    "32": "icons/icono-32.png",
+    "48": "icons/icono-48.png",
+    "96": "icons/icono-96.png"
+  },
+  "action": {
+    "default_title": "__MSG_tituloBoton__",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icono-16.png",
+      "32": "icons/icono-32.png",
+      "48": "icons/icono-48.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "optional_host_permissions": ["<all_urls>"],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "__MSG_descripcionComando__"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "mi-autoclicker@adrianoaquesada.github.io",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  }
+}
