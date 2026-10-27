@@ -11,7 +11,7 @@
 const AJUSTES_POR_DEFECTO = {
   cps: 10,
   tipoClic: "izquierdo",
-  modo: "continuo",
+  modo: "mantener",
   tecla: "F8",
   mostrarIndicador: true,
 };
@@ -223,7 +223,17 @@ async function alternarSitio() {
       // La petición de permiso debe ocurrir dentro de este gesto de usuario.
       let concedido = permiso;
       if (!concedido) {
+        // Firefox cierra el panel en cuanto aparece el diálogo de permiso
+        // (roba el foco), así que el código posterior a este await puede no
+        // ejecutarse nunca. Dejamos la intención guardada para que el fondo
+        // complete la activación aunque este panel desaparezca.
+        await browser.storage.local
+          .set({ activacionPendiente: { origen, tabId: pestana.id, ts: Date.now() } })
+          .catch(() => {});
         concedido = await browser.permissions.request({ origins: [patron] });
+        // Si el panel sobrevive, la intención ya no hace falta: así el fondo
+        // no repite el trabajo si ambos llegan a la activación a la vez.
+        await browser.storage.local.set({ activacionPendiente: null }).catch(() => {});
       }
       if (!concedido) {
         avisoPendiente = { clave: "permisoDenegado", error: true };

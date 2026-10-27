@@ -50,7 +50,8 @@ function crearApi(opciones = {}) {
     pestana = "ausente",
   } = opciones;
 
-  const registro = { pedidosPermiso: [], mensajes: [] };
+  const registro = { pedidosPermiso: [], mensajes: [], escrituras: [], eventos: [] };
+  const estadoStorage = {};
 
   const api = {
     i18n: { getMessage: (clave) => `t:${clave}` },
@@ -65,6 +66,7 @@ function crearApi(opciones = {}) {
       contains: async () => permisoYaConcedido,
       request: async (p) => {
         registro.pedidosPermiso.push(p);
+        registro.eventos.push("request");
         return solicitud === "concedida";
       },
     },
@@ -74,9 +76,13 @@ function crearApi(opciones = {}) {
           const salida = {};
           for (const [clave, defecto] of Object.entries(claves)) salida[clave] = defecto;
           if (Object.keys(sitiosIniciales).length) salida.sitios = sitiosIniciales;
-          return salida;
+          return { ...salida, ...estadoStorage };
         },
-        set: async () => {},
+        set: async (valores) => {
+          Object.assign(estadoStorage, valores);
+          registro.escrituras.push({ ...valores });
+          registro.eventos.push(`set:${Object.keys(valores).join(",")}`);
+        },
       },
     },
     runtime: {
@@ -183,6 +189,30 @@ async function main() {
     "al pulsar de nuevo desactiva el sitio"
   );
   ok(registro.pedidosPermiso.length === 0, "no vuelve a pedir permiso");
+  dom.window.close();
+
+  console.log("\n6. El panel deja la intención de activación antes de pedir el permiso");
+  // Firefox cierra el panel al mostrar el diálogo de permiso: sin esta
+  // intención guardada el usuario tendría que volver a pulsar «Activar».
+  ({ dom, registro } = await abrirPanel({ pestana: "corriendo" }));
+  v = dom.window;
+  v.document
+    .getElementById("alternar")
+    .dispatchEvent(new v.MouseEvent("click", { bubbles: true }));
+  await esperar(60);
+  ok(
+    registro.eventos[0] === "set:activacionPendiente" && registro.eventos[1] === "request",
+    `guarda la intención ANTES de pedir el permiso (${registro.eventos.join(" → ")})`
+  );
+  const pendiente = registro.escrituras[0] && registro.escrituras[0].activacionPendiente;
+  ok(
+    pendiente && pendiente.origen === ORIGEN && pendiente.tabId === 7,
+    "la intención guarda el origen y la pestaña correctos"
+  );
+  ok(
+    registro.escrituras.some((w) => w.activacionPendiente === null),
+    "limpia la intención cuando el panel sobrevive (la completará él mismo)"
+  );
   dom.window.close();
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);

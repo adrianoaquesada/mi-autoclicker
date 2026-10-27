@@ -22,7 +22,7 @@
   const AJUSTES_POR_DEFECTO = {
     cps: 10,
     tipoClic: "izquierdo", // izquierdo | derecho | central
-    modo: "continuo", // continuo | mantener
+    modo: "mantener", // continuo | mantener
     tecla: "F8",
     mostrarIndicador: true,
   };

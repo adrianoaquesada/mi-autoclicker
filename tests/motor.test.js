@@ -125,6 +125,9 @@ async function main() {
   ok(recibidos.length === 0, "no hace clics mientras el sitio está desactivado");
 
   console.log("\n3. Activar el sitio (modo continuo, 10 CPS)");
+  await ext.api.storage.local.set({
+    ajustes: { cps: 10, tipoClic: "izquierdo", modo: "continuo", tecla: "F8", mostrarIndicador: true },
+  });
   await ext.api.storage.local.set({ sitios: { "https://ejemplo.com": true } });
   await esperar(400);
   const clics = recibidos.filter((r) => r.tipo === "click");
@@ -267,6 +270,9 @@ async function main() {
   const recibidos2 = [];
   objetivo2.addEventListener("click", () => recibidos2.push(1));
   win2.eval(CODIGO); // sin ningún mousemove previo
+  await ext2.api.storage.local.set({
+    ajustes: { cps: 10, tipoClic: "izquierdo", modo: "continuo", tecla: "F8", mostrarIndicador: true },
+  });
   await ext2.api.storage.local.set({ sitios: { "https://otro-sitio.org": true } });
   await esperar(400);
   ok(

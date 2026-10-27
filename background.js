@@ -5,6 +5,8 @@
  *  - Inyectar content.js en las pestañas cuyo sitio está activado y tiene permiso.
  *  - Mantener el indicador (badge) del icono de la barra.
  *  - Atender peticiones del popup (activar/desactivar) y del content (estado).
+ *  - Retomar activaciones que el panel dejó a medias (Firefox cierra el panel
+ *    al mostrar el diálogo de permiso, justo antes de poder activar).
  *
  * No guarda estado crítico en memoria: todo vive en browser.storage.local,
  * porque una página de evento puede descargarse en cualquier momento.
@@ -14,6 +16,13 @@
 
 const ARCHIVO_CONTENIDO = "content.js";
 const CLAVE_SITIOS = "sitios";
+// Intención de activación escrita por el panel justo antes de pedir el
+// permiso: si Firefox cierra el panel al mostrar el diálogo, el fondo
+// completa la activación cuando el permiso llega.
+const CLAVE_ACTIVACION_PENDIENTE = "activacionPendiente";
+
+/** Cuánto tiempo se respeta una intención de activación pendiente. */
+const CADUCIDAD_PENDIENTE_MS = 60 * 1000;
 
 /** Último estado de "corriendo" informado por cada pestaña (badge). */
 const estadoCorriendo = new Map();
@@ -218,6 +227,34 @@ async function activarSitio(tabId, origen) {
   return { ok: true, inyectado };
 }
 
+/**
+ * Completa una activación que el panel quedó a medias: cuando Firefox cierra
+ * el popup al mostrar el diálogo de permiso, el código que sigue a la petición
+ * no se ejecuta. El panel deja la intención en storage y aquí la retomamos en
+ * cuanto el permiso aparece.
+ */
+async function completarActivacionPendiente(origenesConcedidos) {
+  if (!Array.isArray(origenesConcedidos) || !origenesConcedidos.length) return;
+
+  const datos = await browser.storage.local.get({ [CLAVE_ACTIVACION_PENDIENTE]: null });
+  const pendiente = datos[CLAVE_ACTIVACION_PENDIENTE];
+  if (!pendiente || !pendiente.origen) return;
+
+  const patron = patronDe(pendiente.origen);
+  const coincide = origenesConcedidos.some((p) => p === patron || p === pendiente.origen);
+  if (!coincide) return; // el permiso concedido es de otro sitio: nada que hacer
+
+  // Consumimos la intención antes de actuar para no repetir el trabajo si el
+  // panel sigue vivo y también llega a activar.
+  await browser.storage.local.set({ [CLAVE_ACTIVACION_PENDIENTE]: null });
+
+  const edad = Date.now() - (Number(pendiente.ts) || 0);
+  if (edad > CADUCIDAD_PENDIENTE_MS || edad < 0) return; // demasiado vieja
+
+  // La pestaña puede haberse cerrado: entonces activamos solo el sitio.
+  await activarSitio(pendiente.tabId, pendiente.origen);
+}
+
 async function desactivarSitio(tabId, origen) {
   if (!origen) return;
 
@@ -266,6 +303,12 @@ browser.tabs.onActivated.addListener(({ tabId }) => {
 
 browser.tabs.onRemoved.addListener((tabId) => {
   estadoCorriendo.delete(tabId);
+});
+
+// Si el panel quedó cerrado por el diálogo de permiso, la activación que
+// pidió el usuario se completa aquí, en cuanto el navegador concede el permiso.
+browser.permissions.onAdded.addListener((permisos) => {
+  completarActivacionPendiente(permisos?.origins).catch(() => {});
 });
 
 // Si el usuario revoca el permiso desde about:addons, limpiamos el sitio.

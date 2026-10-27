@@ -36,7 +36,7 @@ function crearApi() {
   const pestañas = new Map(); // id -> { id, url, active }
   const avisos = [];
   const avisosConsola = [];
-  const oyentes = { mensaje: [], actualizada: [], activada: [], eliminada: [], quitados: [], instalado: [] };
+  const oyentes = { mensaje: [], actualizada: [], activada: [], eliminada: [], quitados: [], anadidos: [], instalado: [] };
   const badges = new Map();
   const estadoApi = {
     fallarInyeccion: false,
@@ -67,6 +67,7 @@ function crearApi() {
         for (const fn of oyentes.quitados) fn({ origins });
       },
       onRemoved: { addListener: (fn) => oyentes.quitados.push(fn) },
+      onAdded: { addListener: (fn) => oyentes.anadidos.push(fn) },
     },
     tabs: {
       get: async (id) => {
@@ -202,6 +203,34 @@ async function main() {
   await ext.api.permissions.remove({ origins: [PATRON] });
   await new Promise((resolver) => setTimeout(resolver, 50));
   ok(!ext.estado.sitios[ORIGEN], "limpia el sitio cuyo permiso desapareció");
+
+  console.log("\n8. El panel se cierra con el diálogo de permiso (activación pendiente)");
+  // Firefox muestra el diálogo de permiso robando el foco y cierra el panel,
+  // por lo que el panel no puede enviar «activar»: deja la intención guardada
+  // y el fondo la retoma cuando el permiso llega.
+  ext.permisos.add(PATRON); // el usuario acaba de concederlo en el diálogo
+  ext.estado.activacionPendiente = { origen: ORIGEN, tabId: 1, ts: Date.now() };
+  await ext.oyentes.anadidos[0]({ origins: [PATRON] });
+  await new Promise((resolver) => setTimeout(resolver, 50));
+  ok(ext.estado.sitios[ORIGEN] === true, "completa la activación pendiente tras conceder el permiso");
+  ok(ext.badges.get(1) === "ON", "el badge pasa a «ON» sin volver a pulsar el botón");
+  ok(ext.estado.activacionPendiente === null, "la intención pendiente queda consumida");
+
+  console.log("\n9. Un permiso de otro sitio no completa la activación");
+  delete ext.estado.sitios[ORIGEN];
+  ext.estado.activacionPendiente = { origen: "https://otro.org", tabId: 1, ts: Date.now() };
+  await ext.oyentes.anadidos[0]({ origins: ["https://ajeno.org/*"] });
+  await new Promise((resolver) => setTimeout(resolver, 50));
+  ok(!ext.estado.sitios["https://otro.org"], "no activa un sitio cuyo permiso no se concedió");
+  ok(Boolean(ext.estado.activacionPendiente), "la intención sigue pendiente para su permiso");
+
+  console.log("\n10. Una intención vieja se ignora y se limpia");
+  ext.estado.activacionPendiente = { origen: "https://viejo.org", tabId: 999, ts: Date.now() - 5 * 60 * 1000 };
+  ext.permisos.add("https://viejo.org/*");
+  await ext.oyentes.anadidos[0]({ origins: ["https://viejo.org/*"] });
+  await new Promise((resolver) => setTimeout(resolver, 50));
+  ok(!ext.estado.sitios["https://viejo.org"], "no activa un sitio con una intención caducada");
+  ok(ext.estado.activacionPendiente === null, "limpia la intención caducada");
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);
   process.exit(fallos === 0 ? 0 : 1);

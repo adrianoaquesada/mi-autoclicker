@@ -10,7 +10,7 @@ comodidades actuales (control por sitio, panel, opciones e indicador en la pági
 
 - **Clics por segundo** ajustables de 1 a 100.
 - **Tipo de clic**: izquierdo, derecho (abre menú contextual) o central.
-- **Dos modos**:
+- **Dos modos** (por defecto, *Mantener tecla*):
   - *Continuo*: el sitio activado hace clic sin parar; la tecla rápida pausa y reanuda.
   - *Mantener tecla*: solo hace clic mientras mantienes pulsada la tecla.
 - **Tecla rápida configurable** (por defecto `F8`), con modificadores opcionales
