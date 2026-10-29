@@ -1,6 +1,6 @@
 {
   "name": "mi-autoclicker",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Extensión de Firefox (Manifest V3) que hace clics automáticos a la velocidad que elijas.",
   "private": true,
   "license": "MPL-2.0",

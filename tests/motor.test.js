@@ -288,6 +288,29 @@ async function main() {
   );
   dom2.window.close();
 
+  console.log("\n14. Observer de iframes: solo mientras el sitio está armado");
+  // El sitio sigue activado (pruebas 11-12): un iframe dinámico debe avisar
+  // al fondo para que reinyecte en él.
+  ext.enviados.length = 0;
+  document.body.appendChild(document.createElement("iframe"));
+  await esperar(400); // el aviso se debounced 300 ms
+  ok(
+    ext.enviados.some((m) => m.tipo === "marcoAniadido"),
+    "con el sitio armado, un iframe dinámico avisa al fondo"
+  );
+
+  // Al desactivar el sitio el observer se desconecta: en reposo no debe
+  // despertar con cada mutación del DOM.
+  await ext.api.storage.local.set({ sitios: {} });
+  await esperar(50);
+  ext.enviados.length = 0;
+  document.body.appendChild(document.createElement("iframe"));
+  await esperar(400);
+  ok(
+    !ext.enviados.some((m) => m.tipo === "marcoAniadido"),
+    "con el sitio desactivado, los iframes ya no avisan"
+  );
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);
   dom.window.close();
   process.exit(fallos === 0 ? 0 : 1);

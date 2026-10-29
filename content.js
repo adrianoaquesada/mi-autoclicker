@@ -274,7 +274,9 @@
       "position:fixed;top:12px;right:12px;z-index:2147483647;pointer-events:none;";
     const raiz = host.attachShadow({ mode: "open" });
     // Plantilla fija (sin interpolación): el texto dinámico se asigna después,
-    // para no introducir asignaciones a innerHTML con valores variables.
+    // para no introducir asignaciones a innerHTML con valores variables. El
+    // punto es estático a propósito: una animación CSS infinita mantendría al
+    // compositor repintando la pestaña mientras clica.
     raiz.innerHTML = `
       <style>
         .caja {
@@ -287,11 +289,8 @@
         }
         .punto {
           width: 8px; height: 8px; border-radius: 50%;
-          background: #37d67a; box-shadow: 0 0 0 0 rgba(55, 214, 122, .55);
-          animation: latir 1.2s ease-out infinite;
-        }
-        @keyframes latir {
-          50% { box-shadow: 0 0 0 7px rgba(55, 214, 122, 0); }
+          background: #37d67a;
+          box-shadow: 0 0 7px rgba(55, 214, 122, .55);
         }
       </style>
       <div class="caja" role="status">
@@ -365,6 +364,12 @@
   /* ---------------------------------------------------------------- */
 
   let avisoMarco = null;
+  let observadorMarcos = null;
+  // Solo pasamos a «conocido» al recibir el estado de sitios: hasta entonces
+  // vigilamos por prudencia (son milisegundos) por si aparece un iframe
+  // durante la carga inicial.
+  let sitiosConocidos = false;
+
   function avisarMarcoNuevo() {
     if (avisoMarco) return;
     avisoMarco = window.setTimeout(() => {
@@ -373,20 +378,34 @@
     }, 300);
   }
 
+  // El observer vive solo mientras el sitio está armado: un subtree abierto
+  // despierta en cada mutación del DOM —y hay uno por iframe—, y con el
+  // sitio desactivado su aviso no serviría de nada, porque al reactivar la
+  // inyección vuelve a cubrir todos los marcos.
   function vigilarMarcos() {
-    if (!document.documentElement) return;
-    const observador = new MutationObserver((mutaciones) => {
-      for (const mutacion of mutaciones) {
-        for (const nodo of mutacion.addedNodes) {
-          if (nodo.nodeType !== 1) continue;
-          if (nodo.tagName === "IFRAME" || nodo.querySelector?.("iframe")) {
-            avisarMarcoNuevo();
-            return;
+    const debeVigilar = armado || !sitiosConocidos;
+    if (debeVigilar && !observadorMarcos && document.documentElement) {
+      observadorMarcos = new MutationObserver((mutaciones) => {
+        for (const mutacion of mutaciones) {
+          for (const nodo of mutacion.addedNodes) {
+            if (nodo.nodeType !== 1) continue;
+            if (nodo.tagName === "IFRAME" || nodo.querySelector?.("iframe")) {
+              avisarMarcoNuevo();
+              return;
+            }
           }
         }
+      });
+      observadorMarcos.observe(document.documentElement, { childList: true, subtree: true });
+    } else if (!debeVigilar && observadorMarcos) {
+      observadorMarcos.disconnect();
+      observadorMarcos = null;
+      if (avisoMarco) {
+        // Un aviso en vuelo ya no tendría destino: el fondo no inyectaría nada.
+        window.clearTimeout(avisoMarco);
+        avisoMarco = null;
       }
-    });
-    observador.observe(document.documentElement, { childList: true, subtree: true });
+    }
   }
 
   /* ---------------------------------------------------------------- */
@@ -396,6 +415,7 @@
   function aplicarSitios(sitios) {
     const estaba = armado;
     armado = Boolean(sitios && sitios[miOrigen()]);
+    sitiosConocidos = true;
     if (armado && !estaba && ajustes.modo === "continuo") {
       alternando = true; // activar el sitio enciende el clic continuo
     }
@@ -403,6 +423,7 @@
       alternando = false;
       teclaSostenida = false;
     }
+    vigilarMarcos();
   }
 
   async function cargarEstado() {
