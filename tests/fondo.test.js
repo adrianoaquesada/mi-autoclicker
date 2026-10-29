@@ -36,8 +36,28 @@ function crearApi() {
   const pestañas = new Map(); // id -> { id, url, active }
   const avisos = [];
   const avisosConsola = [];
-  const oyentes = { mensaje: [], actualizada: [], activada: [], eliminada: [], quitados: [], anadidos: [], instalado: [] };
+  const oyentes = {
+    mensaje: [],
+    actualizada: [],
+    activada: [],
+    eliminada: [],
+    quitados: [],
+    anadidos: [],
+    instalado: [],
+    cambiados: [],
+    arranque: [],
+  };
   const badges = new Map();
+  // Llamadas a las APIs: sirven para comprobar el coste de un evento
+  // (cada una es una IPC real en Firefox).
+  const contadores = {
+    lecturasStorage: 0,
+    escriturasStorage: 0,
+    consultaPestanas: 0,
+    consultaPestana: 0,
+    badge: 0,
+    inyecciones: 0,
+  };
   const estadoApi = {
     fallarInyeccion: false,
     inyecciones: [],
@@ -48,6 +68,7 @@ function crearApi() {
     storage: {
       local: {
         get: async (claves) => {
+          contadores.lecturasStorage += 1;
           if (claves && typeof claves === "object" && !Array.isArray(claves)) {
             const salida = {};
             for (const [clave, defecto] of Object.entries(claves)) {
@@ -57,8 +78,17 @@ function crearApi() {
           }
           return { ...estado };
         },
-        set: async (valores) => Object.assign(estado, valores),
+        set: async (valores) => {
+          contadores.escriturasStorage += 1;
+          const cambios = {};
+          for (const [clave, valor] of Object.entries(valores)) {
+            cambios[clave] = { oldValue: estado[clave], newValue: valor };
+          }
+          Object.assign(estado, valores);
+          for (const fn of oyentes.cambiados) fn(cambios, "local");
+        },
       },
+      onChanged: { addListener: (fn) => oyentes.cambiados.push(fn) },
     },
     permissions: {
       contains: async ({ origins }) => origins.every((p) => permisos.has(p)),
@@ -71,11 +101,13 @@ function crearApi() {
     },
     tabs: {
       get: async (id) => {
+        contadores.consultaPestana += 1;
         const pestana = pestañas.get(id);
         if (!pestana) throw new Error("pestaña inexistente");
         return { ...pestana };
       },
       query: async (consulta = {}) => {
+        contadores.consultaPestanas += 1;
         let salida = [...pestañas.values()];
         if (consulta.active) salida = salida.filter((p) => p.active);
         return salida.map((p) => ({ ...p }));
@@ -93,23 +125,37 @@ function crearApi() {
     scripting: {
       executeScript: async (operacion) => {
         if (estadoApi.fallarInyeccion) throw new Error("inyección rechazada");
+        contadores.inyecciones += 1;
         estadoApi.inyecciones.push(operacion);
         estadoApi.inyectadas.add(operacion.target.tabId);
       },
     },
     action: {
       setBadgeText: async ({ tabId, text }) => {
+        contadores.badge += 1;
         badges.set(tabId, text);
       },
     },
     runtime: {
       onMessage: { addListener: (fn) => oyentes.mensaje.push(fn) },
       onInstalled: { addListener: (fn) => oyentes.instalado.push(fn) },
+      onStartup: { addListener: (fn) => oyentes.arranque.push(fn) },
     },
     i18n: { getMessage: (clave) => `i18n:${clave}` },
   };
 
-  return { api, estado, permisos, pestañas, badges, oyentes, estadoApi, avisos, avisosConsola };
+  return {
+    api,
+    estado,
+    permisos,
+    pestañas,
+    badges,
+    oyentes,
+    contadores,
+    estadoApi,
+    avisos,
+    avisosConsola,
+  };
 }
 
 function cargarFondo(ext) {
@@ -199,7 +245,9 @@ async function main() {
 
   console.log("\n7. Revocación de permisos desde about:addons");
   ext.permisos.add(PATRON);
-  ext.estado.sitios[ORIGEN] = true;
+  // Se escribe por la API (como hace la página de opciones) para que la caché
+  // del fondo se entere vía storage.onChanged.
+  await ext.api.storage.local.set({ sitios: { [ORIGEN]: true } });
   await ext.api.permissions.remove({ origins: [PATRON] });
   await new Promise((resolver) => setTimeout(resolver, 50));
   ok(!ext.estado.sitios[ORIGEN], "limpia el sitio cuyo permiso desapareció");
@@ -217,7 +265,7 @@ async function main() {
   ok(ext.estado.activacionPendiente === null, "la intención pendiente queda consumida");
 
   console.log("\n9. Un permiso de otro sitio no completa la activación");
-  delete ext.estado.sitios[ORIGEN];
+  await ext.api.storage.local.set({ sitios: {} });
   ext.estado.activacionPendiente = { origen: "https://otro.org", tabId: 1, ts: Date.now() };
   await ext.oyentes.anadidos[0]({ origins: ["https://ajeno.org/*"] });
   await new Promise((resolver) => setTimeout(resolver, 50));
@@ -231,6 +279,35 @@ async function main() {
   await new Promise((resolver) => setTimeout(resolver, 50));
   ok(!ext.estado.sitios["https://viejo.org"], "no activa un sitio con una intención caducada");
   ok(ext.estado.activacionPendiente === null, "limpia la intención caducada");
+
+  console.log("\n11. Atajo: con cero sitios activos, los eventos no cuestan IPC");
+  await ext.api.storage.local.set({ sitios: {} });
+  // Primer evento: si el badge quedó en «ON» de las pruebas anteriores, lo
+  // limpia (una escritura) y desde ahí lo recuerda en memoria.
+  ext.oyentes.activada[0]({ tabId: 1 });
+  await new Promise((resolver) => setTimeout(resolver, 30));
+  ok(ext.badges.get(1) === "", "el badge de la pestaña queda vacío");
+
+  const base = { ...ext.contadores };
+  ext.oyentes.activada[0]({ tabId: 1 }); // conmutar de pestaña
+  ext.oyentes.actualizada[0](1, { status: "complete" }, { id: 1, url: `${ORIGEN}/juego` }); // cargar página
+  ext.oyentes.arranque[0](); // arrancar el navegador
+  await new Promise((resolver) => setTimeout(resolver, 50));
+
+  ok(
+    ext.contadores.consultaPestana === base.consultaPestana,
+    "conmutar de pestaña no consulta la pestaña"
+  );
+  ok(
+    ext.contadores.consultaPestanas === base.consultaPestanas,
+    "arrancar no enumera las pestañas abiertas"
+  );
+  ok(ext.contadores.badge === base.badge, "no vuelve a escribir un badge ya vacío");
+  ok(
+    ext.contadores.lecturasStorage === base.lecturasStorage,
+    "lee los sitios de la caché, no de storage"
+  );
+  ok(ext.contadores.inyecciones === base.inyecciones, "no inyecta nada");
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);
   process.exit(fallos === 0 ? 0 : 1);

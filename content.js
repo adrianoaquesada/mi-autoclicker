@@ -473,8 +473,13 @@
     punteroY = evento.clientY;
   }
 
-  window.addEventListener("pointermove", rastrearPuntero, true);
-  window.addEventListener("mousemove", rastrearPuntero, true);
+  // Un solo listener de puntero: Firefox dispara pointermove y mousemove en
+  // paralelo, y registrar los dos repetiría el trabajo por cada movimiento.
+  if (typeof window.PointerEvent === "function") {
+    window.addEventListener("pointermove", rastrearPuntero, true);
+  } else {
+    window.addEventListener("mousemove", rastrearPuntero, true);
+  }
   // Si el usuario aún no ha movido el ratón, usamos su último clic real.
   window.addEventListener(
     "click",

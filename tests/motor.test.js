@@ -117,8 +117,15 @@ async function main() {
     );
   }
 
-  // El usuario mueve el ratón hasta el botón.
-  window.dispatchEvent(new window.MouseEvent("mousemove", { clientX: 40, clientY: 40, bubbles: true }));
+  // El usuario mueve el ratón hasta el botón. En Firefox eso llega como
+  // pointermove (y como mousemove solo si no hay PointerEvent, que es el
+  // listener que content.js registra en ese caso).
+  const hayPointer = typeof window.PointerEvent === "function";
+  window.dispatchEvent(
+    hayPointer
+      ? new window.PointerEvent("pointermove", { clientX: 40, clientY: 40, bubbles: true })
+      : new window.MouseEvent("mousemove", { clientX: 40, clientY: 40, bubbles: true })
+  );
 
   console.log("\n2. Sitio desactivado");
   await esperar(300);
