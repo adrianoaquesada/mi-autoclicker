@@ -62,6 +62,7 @@ function crearApi() {
     fallarInyeccion: false,
     inyecciones: [],
     inyectadas: new Set(), // pestañas con el content script presente
+    corriendoPing: null, // estado que devuelve el content script al recuperar el fondo
   };
 
   const api = {
@@ -116,7 +117,9 @@ function crearApi() {
         if (mensaje && mensaje.tipo === "ping" && !estadoApi.inyectadas.has(id)) {
           throw new Error("content script no presente");
         }
-        return { ok: true };
+        return estadoApi.corriendoPing == null
+          ? { ok: true }
+          : { ok: true, corriendo: estadoApi.corriendoPing };
       },
       onUpdated: { addListener: (fn) => oyentes.actualizada.push(fn) },
       onActivated: { addListener: (fn) => oyentes.activada.push(fn) },
@@ -308,6 +311,16 @@ async function main() {
     "lee los sitios de la caché, no de storage"
   );
   ok(ext.contadores.inyecciones === base.inyecciones, "no inyecta nada");
+
+  console.log("\n12. Recuperar el estado tras reactivar el fondo");
+  ext.estadoApi.corriendoPing = false;
+  await ext.oyentes.activada[0]({ tabId: 1 });
+  await new Promise((resolver) => setTimeout(resolver, 30));
+  ok(ext.badges.get(1) === "II", "recupera del content script que el motor estaba pausado");
+  ext.estadoApi.corriendoPing = true;
+  await ext.oyentes.activada[0]({ tabId: 1 });
+  await new Promise((resolver) => setTimeout(resolver, 30));
+  ok(ext.badges.get(1) === "ON", "recupera el estado activo cuando el motor está corriendo");
 
   console.log("\n12. Modificaciones concurrentes del almacenamiento");
   const ORIGEN_A = "https://a.ejemplo.com";
