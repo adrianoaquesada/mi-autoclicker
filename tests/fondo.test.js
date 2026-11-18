@@ -324,6 +324,18 @@ async function main() {
   await new Promise((resolver) => setTimeout(resolver, 30));
   ok(ext.badges.get(1) === "ON", "recupera el estado activo cuando el motor está corriendo");
 
+  console.log("\n13. Reinyectar pestañas tras el arranque del navegador");
+  ext.pestañas.set(3, { id: 3, url: `${ORIGEN}/otra-pagina`, active: false });
+  ext.estadoApi.inyectadas.delete(3);
+  const inyeccionesAntesArranque = ext.contadores.inyecciones;
+  ext.oyentes.arranque[0]();
+  await new Promise((resolver) => setTimeout(resolver, 60));
+  ok(ext.estadoApi.inyectadas.has(3), "el arranque restaura el content script en pestañas existentes");
+  ok(
+    ext.contadores.inyecciones > inyeccionesAntesArranque,
+    "el arranque vuelve a inyectar solo cuando el script no está presente"
+  );
+
   console.log("\n12. Modificaciones concurrentes del almacenamiento");
   const ORIGEN_A = "https://a.ejemplo.com";
   const ORIGEN_B = "https://b.ejemplo.com";
