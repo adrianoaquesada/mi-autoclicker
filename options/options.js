@@ -19,6 +19,7 @@ const MODIFICADORES = ["Control", "Shift", "Alt", "Meta", "CapsLock", "NumLock",
 
 let ajustes = { ...AJUSTES_POR_DEFECTO };
 let guardadoTemporizador = null;
+let colaGuardado = Promise.resolve();
 
 const el = (id) => document.getElementById(id);
 
@@ -76,11 +77,17 @@ function avisoGuardado() {
 
 function guardar(parciales, inmediato) {
   ajustes = { ...ajustes, ...parciales };
-  if (guardadoTemporizador) window.clearTimeout(guardadoTemporizador);
+  if (guardadoTemporizador) {
+    window.clearTimeout(guardadoTemporizador);
+    guardadoTemporizador = null;
+  }
 
+  // Mantiene el orden de las escrituras y evita que una operación antigua
+  // sobrescriba ajustes más recientes si storage tarda en responder.
   const escribir = () => {
-    browser.storage.local
-      .set({ ajustes })
+    colaGuardado = colaGuardado
+      .catch(() => {})
+      .then(() => browser.storage.local.set({ ajustes: { ...ajustes } }))
       .then(avisoGuardado)
       .catch(() => {});
   };
@@ -88,7 +95,10 @@ function guardar(parciales, inmediato) {
   if (inmediato) {
     escribir();
   } else {
-    guardadoTemporizador = window.setTimeout(escribir, 250);
+    guardadoTemporizador = window.setTimeout(() => {
+      guardadoTemporizador = null;
+      escribir();
+    }, 250);
   }
 }
 
