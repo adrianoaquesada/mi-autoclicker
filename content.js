@@ -175,26 +175,29 @@
       screenX: Math.round(posicion.x + (window.screenX || 0)),
       screenY: Math.round(posicion.y + (window.screenY || 0)),
       button: tipo.button,
-      buttons: tipo.buttons,
       detail: 1,
     };
 
-    const emitir = (nombre, extra) => {
+    // buttons representa los botones que siguen presionados: vale el bit
+    // correspondiente durante down y vuelve a 0 durante up/click.
+    const emitir = (nombre, botonesPresionados) => {
       const esPuntero = nombre.startsWith("pointer");
       const UsaPointer = esPuntero && typeof PointerEvent === "function";
       const Ctor = UsaPointer ? PointerEvent : MouseEvent;
-      const init = UsaPointer
-        ? {
-            ...base,
-            ...extra,
-            pointerId: 1,
-            pointerType: "mouse",
-            isPrimary: true,
-            width: 1,
-            height: 1,
-            pressure: 0.5,
-          }
-        : { ...base, ...extra };
+      const init = {
+        ...base,
+        buttons: botonesPresionados,
+      };
+      if (UsaPointer) {
+        Object.assign(init, {
+          pointerId: 1,
+          pointerType: "mouse",
+          isPrimary: true,
+          width: 1,
+          height: 1,
+          pressure: botonesPresionados ? 0.5 : 0,
+        });
+      }
       try {
         destino.dispatchEvent(new Ctor(nombre, init));
       } catch {
@@ -202,11 +205,11 @@
       }
     };
 
-    emitir("pointerdown");
-    emitir("mousedown");
-    emitir("pointerup");
-    emitir("mouseup");
-    emitir(tipo.final);
+    emitir("pointerdown", tipo.buttons);
+    emitir("mousedown", tipo.buttons);
+    emitir("pointerup", 0);
+    emitir("mouseup", 0);
+    emitir(tipo.final, 0);
 
     contadorTotal += 1;
     const ahora = Date.now();
@@ -355,6 +358,14 @@
     if (comboNormalizado(nombreTecla(evento)) !== comboNormalizado(teclaDeCombo(ajustes.tecla))) {
       return;
     }
+    teclaSostenida = false;
+    sincronizar();
+  }
+
+  // Si la pestaña pierde el foco, Firefox puede no entregar el keyup a este
+  // documento. Nunca dejamos el motor activo por una tecla «atascada».
+  function liberarTeclaPorPerdidaDeFoco() {
+    if (ajustes.modo !== "mantener" || !teclaSostenida) return;
     teclaSostenida = false;
     sincronizar();
   }
@@ -515,6 +526,10 @@
 
   window.addEventListener("keydown", alPulsar, true);
   window.addEventListener("keyup", alSoltar, true);
+  window.addEventListener("blur", liberarTeclaPorPerdidaDeFoco);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) liberarTeclaPorPerdidaDeFoco();
+  });
 
   cargaInicial = cargarEstado();
   vigilarMarcos();
