@@ -48,10 +48,12 @@ function crearApi(opciones = {}) {
     // inicial);  "ausente": no hay content script en la pestaña (la
     // mensajería falla, como en Firefox cuando la inyección no ocurrió).
     pestana = "ausente",
+    demorarGuardadoPendiente = false,
   } = opciones;
 
   const registro = { pedidosPermiso: [], mensajes: [], escrituras: [], eventos: [] };
   const estadoStorage = {};
+  let liberarGuardadoPendiente = null;
 
   const api = {
     i18n: { getMessage: (clave) => `t:${clave}` },
@@ -78,10 +80,19 @@ function crearApi(opciones = {}) {
           if (Object.keys(sitiosIniciales).length) salida.sitios = sitiosIniciales;
           return { ...salida, ...estadoStorage };
         },
-        set: async (valores) => {
-          Object.assign(estadoStorage, valores);
+        set: (valores) => {
           registro.escrituras.push({ ...valores });
           registro.eventos.push(`set:${Object.keys(valores).join(",")}`);
+          if (demorarGuardadoPendiente && valores.activacionPendiente) {
+            return new Promise((resolve) => {
+              liberarGuardadoPendiente = () => {
+                Object.assign(estadoStorage, valores);
+                resolve();
+              };
+            });
+          }
+          Object.assign(estadoStorage, valores);
+          return Promise.resolve();
         },
       },
     },
@@ -94,7 +105,13 @@ function crearApi(opciones = {}) {
     },
   };
 
-  return { api, registro };
+  return {
+    api,
+    registro,
+    liberarGuardadoPendiente: () => {
+      if (liberarGuardadoPendiente) liberarGuardadoPendiente();
+    },
+  };
 }
 
 async function abrirPanel(opciones) {
@@ -214,6 +231,28 @@ async function main() {
     "limpia la intención cuando el panel sobrevive (la completará él mismo)"
   );
   dom.window.close();
+
+  console.log("\n7. La solicitud de permiso no espera a que termine el guardado");
+  const demorado = await abrirPanel({ pestana: "corriendo", demorarGuardadoPendiente: true });
+  v = demorado.dom.window;
+  v.document
+    .getElementById("alternar")
+    .dispatchEvent(new v.MouseEvent("click", { bubbles: true }));
+  ok(
+    demorado.registro.eventos.join(" → ") === "set:activacionPendiente → request",
+    `invoca permissions.request inmediatamente después de iniciar el guardado (${demorado.registro.eventos.join(" → ")})`
+  );
+  ok(
+    demorado.registro.pedidosPermiso.length === 1,
+    "la solicitud de permiso ya fue invocada aunque storage siga pendiente"
+  );
+  demorado.liberarGuardadoPendiente();
+  await esperar(60);
+  ok(
+    demorado.registro.mensajes.some((m) => m.tipo === "activar"),
+    "continúa la activación una vez resuelta la persistencia"
+  );
+  demorado.dom.window.close();
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);
   process.exit(fallos === 0 ? 0 : 1);
