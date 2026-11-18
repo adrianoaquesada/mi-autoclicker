@@ -240,10 +240,18 @@ async function alternarSitio() {
         // (roba el foco), así que el código posterior a este await puede no
         // ejecutarse nunca. Dejamos la intención guardada para que el fondo
         // complete la activación aunque este panel desaparezca.
-        await browser.storage.local
+        // Iniciamos la persistencia, pero NO la esperamos todavía: Firefox
+        // exige que permissions.request se invoque directamente durante el
+        // gesto del usuario. Un await previo hace que el navegador rechace la
+        // solicitud y ni siquiera muestre el diálogo.
+        const guardarPendiente = browser.storage.local
           .set({ activacionPendiente: { origen, tabId: pestana.id, ts: Date.now() } })
           .catch(() => {});
-        concedido = await browser.permissions.request({ origins: [patron] });
+        const solicitudPermiso = browser.permissions.request({ origins: [patron] });
+        concedido = await solicitudPermiso;
+        // La intención debe quedar persistida antes de que el popup pueda
+        // cerrarse y el background tenga que completar la activación.
+        await guardarPendiente;
         // Si el panel sobrevive, la intención ya no hace falta: así el fondo
         // no repite el trabajo si ambos llegan a la activación a la vez.
         await browser.storage.local.set({ activacionPendiente: null }).catch(() => {});
