@@ -250,6 +250,9 @@
   // retrasa un callback, saltamos los intervalos perdidos en vez de disparar
   // una ráfaga de recuperación; así el ritmo no acumula deriva.
   function programarSiguienteClic() {
+    // Una actualización síncrona durante el dispatch pudo haber programado
+    // ya el siguiente timeout; no lo sustituimos ni dejamos uno huérfano.
+    if (temporizador !== null) return;
     if (!debeCorrer()) {
       pararTemporizador();
       return;
