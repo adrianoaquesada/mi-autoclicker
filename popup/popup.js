@@ -27,6 +27,7 @@ let permiso = false;
 let corriendo = false;
 let avisoPendiente = null; // { texto, error }
 let guardadoTemporizador = null;
+let colaGuardado = Promise.resolve();
 
 const el = (id) => document.getElementById(id);
 
@@ -199,11 +200,23 @@ function guardar(parciales, inmediato) {
     window.clearTimeout(guardadoTemporizador);
     guardadoTemporizador = null;
   }
-  const escribir = () => browser.storage.local.set({ ajustes }).catch(() => {});
+
+  // Serializamos las escrituras: una operación lenta no debe terminar después
+  // de otra más reciente y restaurar un snapshot antiguo de los ajustes.
+  const escribir = () => {
+    colaGuardado = colaGuardado
+      .catch(() => {})
+      .then(() => browser.storage.local.set({ ajustes: { ...ajustes } }))
+      .catch(() => {});
+  };
+
   if (inmediato) {
     escribir();
   } else {
-    guardadoTemporizador = window.setTimeout(escribir, 250);
+    guardadoTemporizador = window.setTimeout(() => {
+      guardadoTemporizador = null;
+      escribir();
+    }, 250);
   }
 }
 

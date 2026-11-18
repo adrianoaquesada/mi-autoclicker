@@ -113,7 +113,7 @@ async function main() {
     "contextmenu",
   ]) {
     boton.addEventListener(tipo, (evento) =>
-      recibidos.push({ tipo, button: evento.button, x: evento.clientX })
+      recibidos.push({ tipo, button: evento.button, buttons: evento.buttons, x: evento.clientX })
     );
   }
 
@@ -149,6 +149,12 @@ async function main() {
     `secuencia de eventos real: ${secuencia}`
   );
   ok(clics.every((c) => c.button === 0), "clic izquierdo con button === 0");
+  const down = recibidos.find((r) => r.tipo === "mousedown");
+  const up = recibidos.find((r) => r.tipo === "mouseup");
+  const finalClick = recibidos.find((r) => r.tipo === "click");
+  ok(down && down.buttons === 1, "mousedown informa el botón izquierdo presionado");
+  ok(up && up.buttons === 0, "mouseup informa que ya no hay botones presionados");
+  ok(finalClick && finalClick.buttons === 0, "click se emite con buttons === 0");
 
   console.log("\n4. Indicador en la página");
   const host = document.documentElement.querySelector("div");
@@ -203,6 +209,15 @@ async function main() {
   await esperar(350);
   ok(recibidos.length > corte, "manteniendo F8 hace clics");
 
+  corte = recibidos.length;
+  window.dispatchEvent(new window.Event("blur"));
+  await esperar(300);
+  ok(recibidos.length === corte, "perder el foco detiene el motor aunque no llegue keyup");
+
+  // Un nuevo keydown debe poder iniciar el modo mantener normalmente.
+  window.dispatchEvent(new window.KeyboardEvent("keydown", { key: "F8", bubbles: true }));
+  await esperar(250);
+  ok(recibidos.length > corte, "se puede reactivar después de recuperar el foco");
   corte = recibidos.length;
   window.dispatchEvent(new window.KeyboardEvent("keyup", { key: "F8", bubbles: true }));
   await esperar(300);

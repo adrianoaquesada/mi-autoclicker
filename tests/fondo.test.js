@@ -62,6 +62,7 @@ function crearApi() {
     fallarInyeccion: false,
     inyecciones: [],
     inyectadas: new Set(), // pestañas con el content script presente
+    corriendoPing: null, // estado que devuelve el content script al recuperar el fondo
   };
 
   const api = {
@@ -116,7 +117,9 @@ function crearApi() {
         if (mensaje && mensaje.tipo === "ping" && !estadoApi.inyectadas.has(id)) {
           throw new Error("content script no presente");
         }
-        return { ok: true };
+        return estadoApi.corriendoPing == null
+          ? { ok: true }
+          : { ok: true, corriendo: estadoApi.corriendoPing };
       },
       onUpdated: { addListener: (fn) => oyentes.actualizada.push(fn) },
       onActivated: { addListener: (fn) => oyentes.activada.push(fn) },
@@ -308,6 +311,57 @@ async function main() {
     "lee los sitios de la caché, no de storage"
   );
   ok(ext.contadores.inyecciones === base.inyecciones, "no inyecta nada");
+
+  console.log("\n12. Recuperar el estado tras reactivar el fondo");
+  ext.permisos.add(PATRON);
+  await ext.api.storage.local.set({ sitios: { [ORIGEN]: true } });
+  ext.estadoApi.corriendoPing = false;
+  await ext.oyentes.activada[0]({ tabId: 1 });
+  await new Promise((resolver) => setTimeout(resolver, 30));
+  ok(ext.badges.get(1) === "II", "recupera del content script que el motor estaba pausado");
+  ext.estadoApi.corriendoPing = true;
+  await ext.oyentes.activada[0]({ tabId: 1 });
+  await new Promise((resolver) => setTimeout(resolver, 30));
+  ok(ext.badges.get(1) === "ON", "recupera el estado activo cuando el motor está corriendo");
+
+  console.log("\n13. Reinyectar pestañas tras el arranque del navegador");
+  ext.pestañas.set(3, { id: 3, url: `${ORIGEN}/otra-pagina`, active: false });
+  ext.estadoApi.inyectadas.delete(3);
+  const inyeccionesAntesArranque = ext.contadores.inyecciones;
+  ext.oyentes.arranque[0]();
+  await new Promise((resolver) => setTimeout(resolver, 60));
+  ok(ext.estadoApi.inyectadas.has(3), "el arranque restaura el content script en pestañas existentes");
+  ok(
+    ext.contadores.inyecciones > inyeccionesAntesArranque,
+    "el arranque vuelve a inyectar solo cuando el script no está presente"
+  );
+
+  console.log("\n14. Modificaciones concurrentes del almacenamiento");
+  const ORIGEN_A = "https://a.ejemplo.com";
+  const ORIGEN_B = "https://b.ejemplo.com";
+  const ORIGEN_C = "https://c.ejemplo.com";
+  for (const origen of [ORIGEN_A, ORIGEN_B, ORIGEN_C]) {
+    ext.permisos.add(`${origen}/*`);
+  }
+  await Promise.all([
+    enviar({ tipo: "activar", tabId: null, origen: ORIGEN_A }),
+    enviar({ tipo: "activar", tabId: null, origen: ORIGEN_B }),
+  ]);
+  ok(
+    ext.estado.sitios[ORIGEN_A] === true && ext.estado.sitios[ORIGEN_B] === true,
+    "dos activaciones simultáneas conservan ambos sitios"
+  );
+
+  await Promise.all([
+    enviar({ tipo: "desactivar", tabId: null, origen: ORIGEN_A }),
+    enviar({ tipo: "activar", tabId: null, origen: ORIGEN_C }),
+  ]);
+  ok(
+    !ext.estado.sitios[ORIGEN_A] &&
+      ext.estado.sitios[ORIGEN_B] === true &&
+      ext.estado.sitios[ORIGEN_C] === true,
+    "activar y desactivar en paralelo no pierden cambios de otros sitios"
+  );
 
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);
   process.exit(fallos === 0 ? 0 : 1);

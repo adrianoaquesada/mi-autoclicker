@@ -85,11 +85,28 @@ function leerSitios() {
   return hidratacion;
 }
 
-/** Escribe los sitios y deja la caché al día sin esperar a onChanged. */
-async function guardarSitios(mapa) {
-  await leerSitios().catch(() => null); // que la hidratación no pise esta escritura
-  sitiosCache = mapa;
-  await browser.storage.local.set({ [CLAVE_SITIOS]: mapa });
+/**
+ * Serializa las modificaciones y siempre parte del último valor persistido.
+ * Evita que dos operaciones concurrentes (p. ej. activar A y desactivar B)
+ * escriban snapshots antiguos y se sobrescriban entre sí.
+ */
+let colaActualizacionSitios = Promise.resolve();
+
+function actualizarSitios(modificar) {
+  const operacion = colaActualizacionSitios.then(async () => {
+    const datos = await browser.storage.local.get({ [CLAVE_SITIOS]: {} });
+    const actuales = datos[CLAVE_SITIOS] && typeof datos[CLAVE_SITIOS] === "object"
+      ? datos[CLAVE_SITIOS]
+      : {};
+    const siguientes = { ...actuales };
+    await modificar(siguientes);
+    await browser.storage.local.set({ [CLAVE_SITIOS]: siguientes });
+    sitiosCache = siguientes;
+    return siguientes;
+  });
+  // Un fallo no debe envenenar la cola: la siguiente operación puede reintentarlo.
+  colaActualizacionSitios = operacion.catch(() => {});
+  return operacion;
 }
 
 /** true si hay algún sitio activado; nunca rechaza (un fallo de lectura no bloquea). */
@@ -164,7 +181,15 @@ async function refrescarBadgeActiva() {
 async function yaInyectado(tabId) {
   try {
     const respuesta = await browser.tabs.sendMessage(tabId, { tipo: "ping" });
-    return Boolean(respuesta && respuesta.ok);
+    if (!respuesta || !respuesta.ok) return false;
+
+    // La página de evento puede haberse descargado mientras el content script
+    // seguía vivo. Recuperamos su estado real para que el badge no asuma «ON»
+    // cuando el usuario había dejado el motor pausado.
+    if (typeof respuesta.corriendo === "boolean") {
+      estadoCorriendo.set(tabId, respuesta.corriendo);
+    }
+    return true;
   } catch {
     return false;
   }
@@ -196,8 +221,7 @@ async function asegurarPestana(tabId) {
   if (!sitios[origen]) return false;
 
   if (!(await permisoConcedido(origen))) {
-    delete sitios[origen];
-    await guardarSitios(sitios);
+    await actualizarSitios((mapa) => { delete mapa[origen]; });
     estadoCorriendo.delete(tabId);
     await ponerBadge(tabId, "");
     return false;
@@ -273,9 +297,7 @@ async function activarSitio(tabId, origen) {
   if (!origen) return { ok: false, motivo: "sinOrigen" };
   if (!(await permisoConcedido(origen))) return { ok: false, motivo: "sinPermiso" };
 
-  const sitios = await leerSitios();
-  sitios[origen] = true;
-  await guardarSitios(sitios);
+  await actualizarSitios((mapa) => { mapa[origen] = true; });
 
   if (tabId == null) return { ok: true, inyectado: null };
   // El panel necesita saber si el content script quedó realmente vivo:
@@ -315,11 +337,7 @@ async function completarActivacionPendiente(origenesConcedidos) {
 async function desactivarSitio(tabId, origen) {
   if (!origen) return;
 
-  const sitios = await leerSitios();
-  if (sitios[origen]) {
-    delete sitios[origen];
-    await guardarSitios(sitios);
-  }
+  await actualizarSitios((mapa) => { delete mapa[origen]; });
 
   // Menos privilegio: mientras el sitio esté desactivado no conservamos acceso.
   try {
@@ -386,18 +404,12 @@ browser.permissions.onAdded.addListener((permisos) => {
 
 // Si el usuario revoca el permiso desde about:addons, limpiamos el sitio.
 browser.permissions.onRemoved.addListener(() => {
-  leerSitios()
-    .then(async (mapa) => {
-      let borrado = false;
-      for (const origen of Object.keys(mapa)) {
-        if (!(await permisoConcedido(origen))) {
-          delete mapa[origen];
-          borrado = true;
-        }
-      }
-      if (borrado) await guardarSitios(mapa);
-      await refrescarBadgeActiva();
-    })
+  actualizarSitios(async (mapa) => {
+    for (const origen of Object.keys(mapa)) {
+      if (!(await permisoConcedido(origen))) delete mapa[origen];
+    }
+  })
+    .then(() => refrescarBadgeActiva())
     .catch(() => {});
 });
 

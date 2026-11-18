@@ -39,6 +39,7 @@
   let teclaSostenida = false; // modo mantener: ¿tecla pulsada?
   let temporizador = null;
   let intervaloMs = null; // ritmo actual del temporizador (para detectar cambios)
+  let proximoClicEn = 0; // reloj monotónico: evita acumular deriva entre clics
   let corriendo = false;
   let contadorTotal = 0;
   let marcasClics = []; // marcas de tiempo de los últimos clics (para CPS reales)
@@ -175,26 +176,29 @@
       screenX: Math.round(posicion.x + (window.screenX || 0)),
       screenY: Math.round(posicion.y + (window.screenY || 0)),
       button: tipo.button,
-      buttons: tipo.buttons,
       detail: 1,
     };
 
-    const emitir = (nombre, extra) => {
+    // buttons representa los botones que siguen presionados: vale el bit
+    // correspondiente durante down y vuelve a 0 durante up/click.
+    const emitir = (nombre, botonesPresionados) => {
       const esPuntero = nombre.startsWith("pointer");
       const UsaPointer = esPuntero && typeof PointerEvent === "function";
       const Ctor = UsaPointer ? PointerEvent : MouseEvent;
-      const init = UsaPointer
-        ? {
-            ...base,
-            ...extra,
-            pointerId: 1,
-            pointerType: "mouse",
-            isPrimary: true,
-            width: 1,
-            height: 1,
-            pressure: 0.5,
-          }
-        : { ...base, ...extra };
+      const init = {
+        ...base,
+        buttons: botonesPresionados,
+      };
+      if (UsaPointer) {
+        Object.assign(init, {
+          pointerId: 1,
+          pointerType: "mouse",
+          isPrimary: true,
+          width: 1,
+          height: 1,
+          pressure: botonesPresionados ? 0.5 : 0,
+        });
+      }
       try {
         destino.dispatchEvent(new Ctor(nombre, init));
       } catch {
@@ -202,11 +206,11 @@
       }
     };
 
-    emitir("pointerdown");
-    emitir("mousedown");
-    emitir("pointerup");
-    emitir("mouseup");
-    emitir(tipo.final);
+    emitir("pointerdown", tipo.buttons);
+    emitir("mousedown", tipo.buttons);
+    emitir("pointerup", 0);
+    emitir("mouseup", 0);
+    emitir(tipo.final, 0);
 
     contadorTotal += 1;
     const ahora = Date.now();
@@ -236,24 +240,57 @@
   }
 
   function pararTemporizador() {
-    if (temporizador) {
-      window.clearInterval(temporizador);
+    if (temporizador !== null) {
+      window.clearTimeout(temporizador);
       temporizador = null;
     }
+  }
+
+  // Programación con reloj monotónico y timeout recursivo. Si el navegador
+  // retrasa un callback, saltamos los intervalos perdidos en vez de disparar
+  // una ráfaga de recuperación; así el ritmo no acumula deriva.
+  function programarSiguienteClic() {
+    // Una actualización síncrona durante el dispatch pudo haber programado
+    // ya el siguiente timeout; no lo sustituimos ni dejamos uno huérfano.
+    if (temporizador !== null) return;
+    if (!debeCorrer()) {
+      pararTemporizador();
+      return;
+    }
+
+    const ahora = window.performance.now();
+    const retraso = Math.max(0, proximoClicEn - ahora);
+    temporizador = window.setTimeout(() => {
+      temporizador = null;
+      if (!debeCorrer()) {
+        sincronizar();
+        return;
+      }
+
+      unClic();
+      const despues = window.performance.now();
+      proximoClicEn += intervaloMs;
+      if (proximoClicEn <= despues) {
+        const intervalosPerdidos = Math.floor((despues - proximoClicEn) / intervaloMs) + 1;
+        proximoClicEn += intervalosPerdidos * intervaloMs;
+      }
+      programarSiguienteClic();
+    }, retraso);
   }
 
   function sincronizar() {
     const debe = debeCorrer();
     const ritmo = Math.max(10, Math.round(1000 / cpsSeguros(ajustes.cps)));
-    const ritmoActual = temporizador ? intervaloMs : null;
+    const ritmoActual = temporizador !== null ? intervaloMs : null;
 
     if (!debe) {
       pararTemporizador();
-    } else if (!temporizador || ritmoActual !== ritmo) {
+    } else if (temporizador === null || ritmoActual !== ritmo) {
       // Arrancamos, o reiniciamos si el usuario cambió los clics por segundo.
       pararTemporizador();
       intervaloMs = ritmo;
-      temporizador = window.setInterval(unClic, ritmo);
+      proximoClicEn = window.performance.now() + ritmo;
+      programarSiguienteClic();
     }
 
     const antes = corriendo;
@@ -355,6 +392,14 @@
     if (comboNormalizado(nombreTecla(evento)) !== comboNormalizado(teclaDeCombo(ajustes.tecla))) {
       return;
     }
+    teclaSostenida = false;
+    sincronizar();
+  }
+
+  // Si la pestaña pierde el foco, Firefox puede no entregar el keyup a este
+  // documento. Nunca dejamos el motor activo por una tecla «atascada».
+  function liberarTeclaPorPerdidaDeFoco() {
+    if (ajustes.modo !== "mantener" || !teclaSostenida) return;
     teclaSostenida = false;
     sincronizar();
   }
@@ -515,6 +560,10 @@
 
   window.addEventListener("keydown", alPulsar, true);
   window.addEventListener("keyup", alSoltar, true);
+  window.addEventListener("blur", liberarTeclaPorPerdidaDeFoco);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) liberarTeclaPorPerdidaDeFoco();
+  });
 
   cargaInicial = cargarEstado();
   vigilarMarcos();
