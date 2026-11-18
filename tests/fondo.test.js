@@ -336,7 +336,7 @@ async function main() {
     "el arranque vuelve a inyectar solo cuando el script no está presente"
   );
 
-  console.log("\n12. Modificaciones concurrentes del almacenamiento");
+  console.log("\n14. Modificaciones concurrentes del almacenamiento");
   const ORIGEN_A = "https://a.ejemplo.com";
   const ORIGEN_B = "https://b.ejemplo.com";
   const ORIGEN_C = "https://c.ejemplo.com";
