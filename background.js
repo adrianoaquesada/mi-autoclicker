@@ -181,7 +181,15 @@ async function refrescarBadgeActiva() {
 async function yaInyectado(tabId) {
   try {
     const respuesta = await browser.tabs.sendMessage(tabId, { tipo: "ping" });
-    return Boolean(respuesta && respuesta.ok);
+    if (!respuesta || !respuesta.ok) return false;
+
+    // La página de evento puede haberse descargado mientras el content script
+    // seguía vivo. Recuperamos su estado real para que el badge no asuma «ON»
+    // cuando el usuario había dejado el motor pausado.
+    if (typeof respuesta.corriendo === "boolean") {
+      estadoCorriendo.set(tabId, respuesta.corriendo);
+    }
+    return true;
   } catch {
     return false;
   }
