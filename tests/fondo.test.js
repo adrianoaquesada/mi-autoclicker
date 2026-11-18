@@ -309,6 +309,33 @@ async function main() {
   );
   ok(ext.contadores.inyecciones === base.inyecciones, "no inyecta nada");
 
+  console.log("\n12. Modificaciones concurrentes del almacenamiento");
+  const ORIGEN_A = "https://a.ejemplo.com";
+  const ORIGEN_B = "https://b.ejemplo.com";
+  const ORIGEN_C = "https://c.ejemplo.com";
+  for (const origen of [ORIGEN_A, ORIGEN_B, ORIGEN_C]) {
+    ext.permisos.add(`${origen}/*`);
+  }
+  await Promise.all([
+    enviar({ tipo: "activar", tabId: null, origen: ORIGEN_A }),
+    enviar({ tipo: "activar", tabId: null, origen: ORIGEN_B }),
+  ]);
+  ok(
+    ext.estado.sitios[ORIGEN_A] === true && ext.estado.sitios[ORIGEN_B] === true,
+    "dos activaciones simultáneas conservan ambos sitios"
+  );
+
+  await Promise.all([
+    enviar({ tipo: "desactivar", tabId: null, origen: ORIGEN_A }),
+    enviar({ tipo: "activar", tabId: null, origen: ORIGEN_C }),
+  ]);
+  ok(
+    !ext.estado.sitios[ORIGEN_A] &&
+      ext.estado.sitios[ORIGEN_B] === true &&
+      ext.estado.sitios[ORIGEN_C] === true,
+    "activar y desactivar en paralelo no pierden cambios de otros sitios"
+  );
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`);
   process.exit(fallos === 0 ? 0 : 1);
 }
