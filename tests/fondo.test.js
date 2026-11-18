@@ -313,6 +313,8 @@ async function main() {
   ok(ext.contadores.inyecciones === base.inyecciones, "no inyecta nada");
 
   console.log("\n12. Recuperar el estado tras reactivar el fondo");
+  ext.permisos.add(PATRON);
+  await ext.api.storage.local.set({ sitios: { [ORIGEN]: true } });
   ext.estadoApi.corriendoPing = false;
   await ext.oyentes.activada[0]({ tabId: 1 });
   await new Promise((resolver) => setTimeout(resolver, 30));
